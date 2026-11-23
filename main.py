@@ -103,7 +103,13 @@ def scan():
             continue
 
         periods = summary.get("periods", [])
-        first = get_period(periods, "1st Half")
+
+print("KLUCZE SUMMARY:", list(summary.keys()))
+print("DANE PERIODS:", json.dumps(
+    periods, ensure_ascii=False
+)[:4000])
+
+first = get_period(periods, "1st Half")
         second = get_period(periods, "2nd Half")
 
         if not first or not second:
