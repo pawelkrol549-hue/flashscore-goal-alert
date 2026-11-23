@@ -2,7 +2,11 @@
 import os
 import json
 import requests
+
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 
 BASE_URL = "http://127.0.0.1:8000"
 STATE_FILE = Path("state.json")
@@ -10,17 +14,29 @@ STATE_FILE = Path("state.json")
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
+TIMEZONE = ZoneInfo("Europe/Warsaw")
+
 
 def load_state():
     if STATE_FILE.exists():
         try:
-            return json.loads(
+            state = json.loads(
                 STATE_FILE.read_text(encoding="utf-8")
             )
+
+            state.setdefault("sent", [])
+            state.setdefault("initialized", False)
+
+            return state
+
         except Exception:
             pass
 
-    return {"sent": [], "initialized": False}
+    return {
+        "sent": [],
+        "initialized": False,
+        "last_health_message": None
+    }
 
 
 def save_state(state):
@@ -36,7 +52,9 @@ def api_get(path, params=None):
         params=params,
         timeout=30
     )
+
     response.raise_for_status()
+
     return response.json()
 
 
@@ -53,6 +71,7 @@ def send_telegram(message):
     )
 
     response.raise_for_status()
+
     result = response.json()
 
     if not result.get("ok"):
@@ -74,8 +93,41 @@ def get_period(periods, search):
 def score(value):
     try:
         return int(value)
+
     except (TypeError, ValueError):
         return None
+
+
+def send_daily_health_message(state):
+    now = datetime.now(TIMEZONE)
+    today = now.strftime("%Y-%m-%d")
+
+    if now.hour < 21:
+        return
+
+    if state.get("last_health_message") == today:
+        return
+
+    message = (
+        "✅ BOT DZIAŁA PRAWIDŁOWO!\n\n"
+        "🤖 Automatyczne sprawdzanie meczów jest aktywne.\n"
+        "⚽ Bot szuka goli wyrównujących w drugiej połowie.\n"
+        "⏱ Sprawdzanie odbywa się co 5 minut.\n"
+        "📅 Wiadomość kontrolna: 21:00"
+    )
+
+    try:
+        send_telegram(message)
+
+        state["last_health_message"] = today
+        save_state(state)
+
+        print("WYSŁANO DZIENNĄ WIADOMOŚĆ KONTROLNĄ.")
+
+    except Exception as error:
+        print(
+            f"BŁĄD WIADOMOŚCI KONTROLNEJ: {error}"
+        )
 
 
 def scan():
@@ -136,6 +188,7 @@ def scan():
                 "/matches/summary",
                 {"match": match_id}
             )
+
         except Exception as error:
             print(
                 f"BŁĄD historii {home} - {away}: {error}"
@@ -279,30 +332,34 @@ def scan():
             "Pierwsza inicjalizacja zakończona "
             "bez starych alertów."
         )
-        return
 
-    for key, message in found:
-        try:
-            send_telegram(message)
+    else:
+        for key, message in found:
+            try:
+                send_telegram(message)
 
-            state["sent"].append(key)
-            save_state(state)
+                state["sent"].append(key)
+                save_state(state)
 
-            print(
-                f"WYSŁANO ALERT: {key}"
-            )
+                print(
+                    f"WYSŁANO ALERT: {key}"
+                )
 
-        except Exception as error:
-            print(
-                f"BŁĄD TELEGRAM: {error}"
-            )
+            except Exception as error:
+                print(
+                    f"BŁĄD TELEGRAM: {error}"
+                )
+
+    send_daily_health_message(state)
 
 
 if __name__ == "__main__":
     try:
         scan()
+
     except Exception as error:
         print(
             f"BŁĄD GŁÓWNY: {error}"
         )
+
         raise
