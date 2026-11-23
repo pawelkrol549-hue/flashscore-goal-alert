@@ -61,7 +61,9 @@ def send_telegram(message):
 
 def get_period(periods, search):
     for period in periods or []:
-        name = str(period.get("name", "")).lower()
+        name = str(
+            period.get("period", period.get("name", ""))
+        ).lower()
 
         if search.lower() in name:
             return period
@@ -142,21 +144,6 @@ def scan():
 
         periods = summary.get("periods", [])
 
-        print(
-            f"\nDANE MECZU: {home} - {away}"
-        )
-        print(
-            "KLUCZE SUMMARY:",
-            list(summary.keys())
-        )
-        print(
-            "DANE PERIODS:",
-            json.dumps(
-                periods,
-                ensure_ascii=False
-            )[:4000]
-        )
-
         first = get_period(
             periods,
             "1st Half"
@@ -183,7 +170,7 @@ def scan():
 
         if ht_home is None or ht_away is None:
             print(
-                f"Brak wyniku HT: {home} - {away}"
+                f"Brak wyniku do przerwy: {home} - {away}"
             )
             continue
 
