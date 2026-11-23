@@ -1,5 +1,5 @@
 
-name: Flashscore Goal Events Test
+name: Flashscore Live Matches Test
 
 on:
   workflow_dispatch:
@@ -20,10 +20,11 @@ jobs:
       - name: Install requirements
         run: python -m pip install -r flashscore-scraper/requirements.txt
 
-      - name: Start scraper and get goal events
+      - name: Start scraper and show first match
         run: |
           cd flashscore-scraper
           nohup python run.py > ../scraper.log 2>&1 &
+
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
               echo "Serwer działa!"
@@ -32,5 +33,5 @@ jobs:
             sleep 2
           done
 
-          echo "=== HISTORIA BRAMEK WIETNAMU ==="
-          curl --max-time 90 -fsS "http://127.0.0.1:8000/matches/summary?match=Opgmk4O0" | python -m json.tool
+          echo "=== PIERWSZY MECZ ==="
+          curl --max-time 90 -fsS "http://127.0.0.1:8000/matches/live?sport=football" | python -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('matches',[d])[0], indent=2, ensure_ascii=False))"
