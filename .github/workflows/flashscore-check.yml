@@ -1,0 +1,35 @@
+
+name: Flashscore Scraper Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scraper-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download scraper
+        run: git clone --depth 1 https://github.com/omkarcloud/flashscore-scraper.git
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scraper requirements
+        run: python -m pip install -r flashscore-scraper/requirements.txt
+
+      - name: Start scraper
+        run: |
+          cd flashscore-scraper
+          nohup python run.py > ../scraper.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then
+              echo "Scraper działa!"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../scraper.log
+          exit 1
