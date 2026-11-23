@@ -1,5 +1,5 @@
 
-name: Flashscore Scraper Check
+name: Flashscore Goal Events Test
 
 on:
   workflow_dispatch:
@@ -20,17 +20,17 @@ jobs:
       - name: Install requirements
         run: python -m pip install -r flashscore-scraper/requirements.txt
 
-      - name: Start scraper and get live matches
+      - name: Start scraper and get goal events
         run: |
           cd flashscore-scraper
           nohup python run.py > ../scraper.log 2>&1 &
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
-              echo "Serwer działa."
+              echo "Serwer działa!"
               break
             fi
             sleep 2
           done
 
-          echo "=== MECZE NA ŻYWO ==="
-          curl --max-time 90 -fsS "http://127.0.0.1:8000/matches/live?sport=football" | python -m json.tool
+          echo "=== HISTORIA BRAMEK WIETNAMU ==="
+          curl --max-time 90 -fsS "http://127.0.0.1:8000/matches/summary?match=Opgmk4O0" | python -m json.tool
